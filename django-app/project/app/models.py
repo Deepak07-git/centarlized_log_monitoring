@@ -18,7 +18,7 @@ class Server(models.Model):
 
 
 class ThreatLog(models.Model):
-    """Stores AI-analyzed log entries with threat classification."""
+    """Stores rule-detected log entries with threat classification."""
     SEVERITY_CHOICES = [
         ('LOW', 'Low'),
         ('MEDIUM', 'Medium'),
@@ -41,13 +41,6 @@ class ThreatLog(models.Model):
     source_ip = models.GenericIPAddressField(null=True, blank=True)
     attack_type = models.CharField(max_length=100, blank=True, default='')
 
-    # Local Ollama analysis metadata. These are nullable so existing records remain valid.
-    ai_analyzed = models.BooleanField(default=False)
-    ai_model = models.CharField(max_length=100, blank=True, default='')
-    ai_confidence = models.FloatField(default=0.0)
-    ai_summary = models.TextField(blank=True, default='')
-    ai_recommendation = models.TextField(blank=True, default='')
-    ai_indicators = models.JSONField(default=list, blank=True)
 
     def __str__(self):
         return f"{self.classification} ({self.risk_score}) - {self.timestamp}"
