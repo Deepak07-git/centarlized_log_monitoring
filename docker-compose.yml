@@ -13,7 +13,14 @@ services:
       - "9200:9200"
     networks:
       - log_network
-
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - log_network
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.0
