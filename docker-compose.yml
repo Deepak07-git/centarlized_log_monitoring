@@ -13,14 +13,7 @@ services:
       - "9200:9200"
     networks:
       - log_network
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    networks:
-      - log_network
+
 
   filebeat:
     image: docker.elastic.co/beats/filebeat:8.11.0
@@ -48,12 +41,8 @@ services:
       - "8000:8000"
     depends_on:
       - elasticsearch
-      - ollama
     environment:
       ELASTICSEARCH_HOST: http://elasticsearch:9200
-      OLLAMA_HOST: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.1}
-      OLLAMA_TIMEOUT: ${OLLAMA_TIMEOUT:-45}
       SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -79,4 +68,3 @@ networks:
 
 volumes:
   log_data:
-  ollama_data:

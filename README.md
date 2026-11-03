@@ -1,16 +1,14 @@
 # Centralized Log Monitoring & Security Analytics Platform
 
-A containerized centralized log analytics and security monitoring platform using Elasticsearch, Filebeat, Django, and a **local Ollama LLM**. The platform combines deterministic security rules with AI enrichment to classify suspicious logs, prioritize threats, explain findings, and generate defensive recommendations.
+A containerized log monitoring platform built with Elasticsearch, Filebeat, Django, and Docker Compose. It uses deterministic, rule-based detection to identify suspicious log activity, classify threats, calculate risk scores, and trigger defensive workflows such as email alerts and IP-block records.
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
-
-- Docker Desktop / Docker Engine with Compose
-- At least 8 GB RAM recommended for a local LLM
+- Docker Engine / Docker Desktop with Docker Compose
+- At least 4 GB RAM (more may be needed for Elasticsearch)
 
 ### Launch
-
 ```bash
 git clone https://github.com/hari-107/centarlized_log_monitoring.git
 cd centarlized_log_monitoring
@@ -18,109 +16,66 @@ cp .env.example .env
 docker compose up --build -d
 ```
 
-Pull the configured Ollama model once after the Ollama container starts:
+Open the dashboard at **http://localhost:8000**.
 
-```bash
-docker compose exec ollama ollama pull llama3.1
-```
-
-Then open the dashboard at **http://localhost:8000**.
-
-> Ollama runs locally inside the Compose network. Log content is sent to the local model rather than a hosted AI API.
-
-## 🏗️ Architecture
+## Architecture
 
 ```text
-Log Generator / Servers
-        │
-        ▼
-     Filebeat
-        │
-        ▼
- Elasticsearch
-        │
-        ▼
- Django processing pipeline
-        │
-        ├── Rule-based detection
-        │      ├── auth failures
-        │      ├── brute force
-        │      ├── injection patterns
-        │      └── suspicious indicators
-        │
-        └── Ollama AI enrichment
-               ├── classification
-               ├── severity
-               ├── attack type
-               ├── confidence
-               ├── indicators
-               └── recommendation
-                        │
-                        ▼
-                 Threat database
-                        │
-                ┌───────┴────────┐
-                ▼                ▼
-            Dashboard        Email alerts
+Log Generator / Monitored Servers
+             |
+             v
+          Filebeat
+             |
+             v
+       Elasticsearch
+             |
+             v
+    Django processing pipeline
+             |
+      Rule-based detection
+       |      |       |
+       v      v       v
+    Threat  Risk    IP extraction
+    records scoring      |
+       |                 v
+       |          Active response records
+       v
+ Dashboard and email alerts
 ```
 
-| Component | Description |
-|-----------|-------------|
-| **Elasticsearch** | Centralized log storage and search |
-| **Filebeat** | Collects structured logs and forwards them to Elasticsearch |
-| **Ollama** | Local LLM used for security-log classification and enrichment |
-| **Django Backend** | Processing pipeline, APIs, threat storage, and alerting |
-| **Log Generator** | Simulates multiple monitored servers |
+| Component | Responsibility |
+|---|---|
+| **Filebeat** | Collects log files and forwards events |
+| **Elasticsearch** | Centralized log storage, search, and aggregation |
+| **Django** | Rule evaluation, threat records, APIs, dashboard, and alerting |
+| **Log Generator** | Simulates log activity from monitored servers |
 | **Grafana** | Optional visualization |
 
-## 🧠 AI Threat Analysis
+## Detection
 
-Each newly processed threat can be enriched by Ollama with a structured result:
+The processing pipeline uses predefined regular-expression and keyword patterns to identify events such as SSH brute force, SQL injection, XSS, DDoS patterns, directory traversal, web shells, command injection, privilege escalation, SSRF, remote code execution, data exfiltration, port scans, and unauthorized access.
 
-```json
-{
-  "classification": "ATTACK",
-  "severity": "HIGH",
-  "attack_type": "BRUTE_FORCE",
-  "confidence": 0.94,
-  "summary": "Repeated authentication failures indicate possible credential attack activity.",
-  "recommendation": "Correlate source IP activity and review authentication logs.",
-  "indicators": ["repeated login failures", "root account targeted"]
-}
-```
+Severity and risk are determined by configured detection rules. The project does not depend on an LLM, external AI API, or model runtime.
 
-The implementation intentionally uses **rules + AI** instead of relying on the LLM alone. Existing high-risk deterministic findings are not downgraded by an AI result.
+## Security Workflows
 
-### Supported detection categories
+- Store detected events with severity, classification, source IP, and risk score.
+- Record blocked IPs and handled-log actions through the active-response service.
+- Send email alerts for High and Critical events when SMTP is configured.
 
-`AUTH_FAILURE`, `BRUTE_FORCE`, `SQL_INJECTION`, `XSS`, `PATH_TRAVERSAL`, `COMMAND_INJECTION`, `SSRF`, `RCE`, `DOS_PATTERN`, `PRIVILEGE_ESCALATION`, `MALWARE_INDICATOR`, `DATA_EXFILTRATION`, `UNAUTHORIZED_ACCESS`, `PORT_SCAN`, and `UNKNOWN`.
+> IP blocking is currently represented by application active-response records. It does not automatically install firewall rules on the monitored host.
 
-## 🛡️ Security Model
+## Database Migrations
 
-The AI layer is **analysis-only**. It does not execute commands or directly modify the monitored host. Existing active-response functionality remains separate from AI analysis.
-
-High/Critical events can still trigger the configured email alerting workflow.
-
-## 📊 Threat Data
-
-AI metadata is stored on `ThreatLog`, including:
-
-- `ai_analyzed`
-- `ai_model`
-- `ai_confidence`
-- `ai_summary`
-- `ai_recommendation`
-- `ai_indicators`
-
-Run Django migrations after an update:
+The application runs migrations during container startup. To apply them manually:
 
 ```bash
-docker compose exec django-app python project/manage.py migrate
+docker compose exec django-app python manage.py migrate
 ```
 
-## 📧 Email Alerting
+## Email Alerting
 
-Email credentials are **not stored in `docker-compose.yml`**. Copy `.env.example` to `.env` and configure:
+Copy `.env.example` to `.env` and configure the SMTP values:
 
 ```env
 SMTP_HOST=smtp.gmail.com
@@ -131,42 +86,34 @@ ALERT_EMAIL_FROM=your-sender@gmail.com
 ALERT_EMAIL_TO=your-recipient@gmail.com
 ```
 
-For Gmail, use an App Password rather than a normal account password.
+For Gmail, use an App Password rather than your normal account password.
 
-## 🌐 Service URLs
+## Service URLs
 
 | Service | URL |
-|---------|-----|
-| **Dashboard** | http://localhost:8000 |
-| **Elasticsearch** | http://localhost:9200 |
-| **Ollama** | http://localhost:11434 |
-| **Grafana** | http://localhost:3000 |
+|---|---|
+| Dashboard | http://localhost:8000 |
+| Elasticsearch | http://localhost:9200 |
+| Grafana | http://localhost:3000 |
 
-## 📡 API Endpoints
+## API Endpoints
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
+|---|---|---|
 | GET | `/api/servers/` | List monitored servers and threat statistics |
 | GET | `/api/logs/?server_id=&severity=&keyword=` | Search/filter Elasticsearch logs |
 | GET | `/api/threats/?server_id=&severity=&status=` | Filter stored threats |
 | GET | `/api/stats/` | Dashboard statistics |
-| POST | `/api/analyze/` | Trigger processing / analysis |
+| POST | `/api/detect/` | Trigger rule-based processing |
 | POST | `/api/resolve/<id>/` | Mark a threat as resolved |
 
-## 🔧 Useful Commands
+## Useful Commands
 
 ```bash
 docker compose up --build -d
-
-docker compose exec ollama ollama pull llama3.1
-
-docker compose exec django-app python project/manage.py migrate
-
 docker compose logs -f django-app
-docker compose logs -f ollama
+docker compose logs -f filebeat
 docker compose down
 ```
 
-## ⚠️ Secret Rotation
-
-If an SMTP password has ever been committed to this repository, revoke/rotate it immediately and create a new credential. The current Compose configuration uses environment variables so credentials stay outside source control.
+Keep SMTP credentials in your local `.env` file and never commit that file.

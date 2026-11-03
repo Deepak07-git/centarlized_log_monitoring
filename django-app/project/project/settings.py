@@ -73,9 +73,6 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 # External services
 ELASTICSEARCH_HOST = os.environ.get('ELASTICSEARCH_HOST', 'http://localhost:9200')
-OLLAMA_HOST = os.environ.get('OLLAMA_HOST', 'http://localhost:11434')
-OLLAMA_MODEL = os.environ.get('OLLAMA_MODEL', 'llama3.1')
-OLLAMA_TIMEOUT = int(os.environ.get('OLLAMA_TIMEOUT', '45'))
 
 # Email alerting configuration. Keep credentials outside source control.
 SMTP_HOST = os.environ.get('SMTP_HOST', 'smtp.gmail.com')
