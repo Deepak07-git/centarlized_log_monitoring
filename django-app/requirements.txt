@@ -3,4 +3,3 @@ djangorestframework
 django-cors-headers
 django-apscheduler
 elasticsearch>=8.11.0,<9.0.0
-requests
